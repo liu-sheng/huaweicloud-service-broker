@@ -138,3 +138,4 @@ We use the [GitHub issue tracker](https://github.com/huaweicloud/huaweicloud-ser
 ## License
 
 huaweicloud-service-broker is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
+test CI
