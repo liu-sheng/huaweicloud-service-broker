@@ -11,6 +11,7 @@ Currently it includes the following services support:
 * [Relational Database Service (RDS)](http://www.huaweicloud.com/en-us/product/rds.html)
 
 ## Prerequisites
+Test CI
 
 You'll need a few prerequisites before you are getting started.
 
