@@ -12,6 +12,8 @@ Currently it includes the following services support:
 
 ## Prerequisites
 
+Test CI
+
 You'll need a few prerequisites before you are getting started.
 
 ### Setup a Backing MySQL Database
