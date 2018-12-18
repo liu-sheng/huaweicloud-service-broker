@@ -134,9 +134,11 @@ func (cloudBroker *CloudServiceBroker) Provision(
 		return brokerapi.ProvisionedServiceSpec{}, error
 	}
 
-	e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
-	if e != nil {
-		return brokerapi.ProvisionedServiceSpec{}, e
+	if details.ServiceID == "" || details.PlanID == "" {
+		e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
+		if e != nil {
+			return brokerapi.ProvisionedServiceSpec{}, e
+		}
 	}
 
 	// find service plan
@@ -164,9 +166,11 @@ func (cloudBroker *CloudServiceBroker) Deprovision(
 
 	cloudBroker.Logger.Debug(fmt.Sprintf("Deprovision received. instanceID: %s", instanceID))
 
-	e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
-	if e != nil {
-		return brokerapi.DeprovisionServiceSpec{}, e
+	if details.ServiceID == "" || details.PlanID == "" {
+		e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
+		if e != nil {
+			return brokerapi.DeprovisionServiceSpec{}, e
+		}
 	}
 
 	// find service plan
@@ -244,9 +248,41 @@ func (cloudBroker *CloudServiceBroker) Update(
 
 	cloudBroker.Logger.Debug(fmt.Sprintf("Update received. instanceID: %s", instanceID))
 
-	e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
-	if e != nil {
-		return brokerapi.UpdateServiceSpec{}, e
+	if details.ServiceID == "" || details.PlanID == "" {
+		e := cloudBroker.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
+		if e != nil {
+			return brokerapi.UpdateServiceSpec{}, e
+		}
+
+		if instanceID != "" {
+			// Check instance length in back database
+			var length int
+			err := database.BackDBConnection.
+				Model(&database.InstanceDetails{}).
+				Where("instance_id = ?", instanceID).
+				Count(&length).Error
+			if err != nil {
+				return brokerapi.UpdateServiceSpec{}, err
+			}
+			// instance is existing
+			if length > 0 {
+				// Get InstanceDetails in back database
+				iddetail := database.InstanceDetails{}
+				err = database.BackDBConnection.
+					Where("instance_id = ?", instanceID).
+					First(&iddetail).Error
+				if err != nil {
+					return brokerapi.UpdateServiceSpec{}, err
+				}
+
+				details.ServiceID = iddetail.ServiceID
+				details.PlanID = iddetail.PlanID
+
+				cloudBroker.Logger.Debug(
+					fmt.Sprintf("Auto discovery ServiceID: %s and PlanID: %s for instanceID: %s",
+						details.ServiceID, details.PlanID, instanceID))
+			}
+		}
 	}
 
 	// find service plan

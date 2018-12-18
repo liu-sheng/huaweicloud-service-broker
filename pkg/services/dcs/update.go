@@ -14,6 +14,14 @@ import (
 // Update implematation
 func (b *DCSBroker) Update(instanceID string, details brokerapi.UpdateDetails, asyncAllowed bool) (brokerapi.UpdateServiceSpec, error) {
 
+	// Check accepts_incomplete if this service support async
+	if models.OperationAsyncDCS {
+		e := b.Catalog.ValidateAcceptsIncomplete(asyncAllowed)
+		if e != nil {
+			return brokerapi.UpdateServiceSpec{}, e
+		}
+	}
+
 	// Check dcs instance length in back database
 	var length int
 	err := database.BackDBConnection.
@@ -157,18 +165,21 @@ func (b *DCSBroker) Update(instanceID string, details brokerapi.UpdateDetails, a
 
 	// Extend capacity
 	if updateParameters.NewCapacity > 0 {
-		extendResult := instances.Extend(
-			dcsClient,
-			ids.TargetID,
-			instances.ExtendOpts{
-				NewCapacity: updateParameters.NewCapacity,
-			})
-		if extendResult.Err != nil {
-			return brokerapi.UpdateServiceSpec{}, fmt.Errorf("extend dcs instance failed. Error: %s", err)
-		}
+		// Update in case of difference
+		if updateParameters.NewCapacity != instance.Capacity {
+			extendResult := instances.Extend(
+				dcsClient,
+				ids.TargetID,
+				instances.ExtendOpts{
+					NewCapacity: updateParameters.NewCapacity,
+				})
+			if extendResult.Err != nil {
+				return brokerapi.UpdateServiceSpec{}, fmt.Errorf("extend dcs instance failed. Error: %s", err)
+			}
 
-		// Log result
-		b.Logger.Debug(fmt.Sprintf("extend dcs instance result: %v", models.ToJson(extendResult)))
+			// Log result
+			b.Logger.Debug(fmt.Sprintf("extend dcs instance result: %v", models.ToJson(extendResult)))
+		}
 	}
 
 	// Invoke sdk get

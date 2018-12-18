@@ -22,9 +22,24 @@ func (b *DMSBroker) Bind(instanceID, bindingID string, details brokerapi.BindDet
 	if err != nil {
 		return brokerapi.Binding{}, fmt.Errorf("check dms bind length in back database failed. Error: %s", err)
 	}
-	// ErrBindingAlreadyExists
+	// ErrBindingAlreadyExistsSame
 	if length > 0 {
-		return brokerapi.Binding{}, brokerapi.ErrBindingAlreadyExists
+		// Get BindDetails in back database
+		bddetail := database.BindDetails{}
+		err = database.BackDBConnection.
+			Where("bind_id = ? and instance_id = ? and service_id = ? and plan_id = ?", bindingID, instanceID, details.ServiceID, details.PlanID).
+			First(&bddetail).Error
+		if err != nil {
+			return brokerapi.Binding{}, fmt.Errorf("get binding in back database failed. Error: %s", err)
+		}
+
+		// Get additional info from InstanceDetails
+		bindingdetail := brokerapi.Binding{}
+		err = bddetail.GetBindInfo(&bindingdetail)
+		if err != nil {
+			return brokerapi.Binding{}, fmt.Errorf("get binding info failed. Error: %s", err)
+		}
+		return bindingdetail, brokerapi.ErrBindingAlreadyExistsSame
 	}
 
 	// Check dms instance length in back database
